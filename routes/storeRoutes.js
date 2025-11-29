@@ -1,5 +1,5 @@
 const express = require('express');
-const { createStore, getAllStores } = require('../controllers/storeController');
+const { createStore, getAllStores, getStoreById, updateStoreById, deleteStoreById } = require('../controllers/storeController');
 
 
 const storeRouter = express.Router();
@@ -9,6 +9,8 @@ const storeRouter = express.Router();
 
 storeRouter.post('/', createStore);
 storeRouter.get('/', getAllStores);
-// storeRouter.delete('/:id', deleteStore);
+storeRouter.get('/:id', getStoreById);
+storeRouter.put('/:id', updateStoreById);
+storeRouter.delete('/:id', deleteStoreById);
 
 module.exports = storeRouter;

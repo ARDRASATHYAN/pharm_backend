@@ -99,3 +99,105 @@ exports.getAllStores = async (req, res) => {
   }
 };
 
+
+// get store by id
+exports.getStoreById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const store = await Store.findByPk(id);
+
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    res.json({ store });
+
+  } catch (err) {
+    console.error('getStoreById error', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+// update store by id
+exports.updateStoreById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      store_name,
+      address,
+      city,
+      state,
+      gst_no,
+      phone,
+      email,
+    } = req.body;
+
+    const store = await Store.findByPk(id);
+
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // If updating GST, check duplicate
+    if (gst_no && gst_no !== store.gst_no) {
+      const existingGst = await Store.findOne({
+        where: {
+          gst_no,
+          store_id: { [Op.ne]: id },
+        },
+      });
+
+      if (existingGst) {
+        return res.status(409).json({ message: 'GST number already exists' });
+      }
+    }
+
+    // Update fields 
+    if (store_name !== undefined) store.store_name = store_name;
+    if (address !== undefined) store.address = address;
+    if (city !== undefined) store.city = city;
+    if (state !== undefined) store.state = state;
+    if (gst_no !== undefined) store.gst_no = gst_no;
+    if (phone !== undefined) store.phone = phone;
+    if (email !== undefined) store.email = email;
+
+    await store.save();
+
+    res.json({
+      message: 'Store updated successfully',
+      store,
+    });
+
+  } catch (err) {
+    console.error('updateStoreById error', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// delete by id
+exports.deleteStoreById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const store = await Store.findByPk(id);
+
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // Hard delete
+    await store.destroy();
+
+    res.json({ message: 'Store deleted successfully' });
+
+  } catch (err) {
+    console.error('deleteStoreById error', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+
