@@ -9,6 +9,12 @@ const compression = require("compression");
 const morgan = require("morgan");
 const userRouter = require("./routes/userRoutes");
 const storeRouter = require("./routes/storeRoutes");
+const itemRouter = require("./routes/itemRoutes");
+const hsnRouter = require("./routes/hsnRoutes");
+const drugscheduleRouter = require("./routes/drugScheduleRoutes");
+const purchaseRouter = require("./routes/purchaseRoutes");
+const supplierRouter = require("./routes/supplierRoutes");
+const stockRouter = require("./routes/stockRoutes");
 
 
 
@@ -28,6 +34,12 @@ app.set('trust proxy', true);
 // route mounting
 app.use("/api/user",userRouter);
 app.use("/api/store",storeRouter);
+app.use("/api/item",itemRouter);
+app.use("/api/hsn",hsnRouter);
+app.use("/api/drug-schedule",drugscheduleRouter);
+app.use("/api/supplier",supplierRouter);
+app.use("/api/purchase",purchaseRouter);
+app.use("/api/stock",stockRouter);
 
 
 const PORT = process.env.PORT || 5000;
