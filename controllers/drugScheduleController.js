@@ -1,4 +1,6 @@
 const { Op } = require("sequelize");
+const db = require('../models'); 
+const { DrugSchedule } = db;
 
 exports.createDrugSchedule = async (req, res) => {
   try {
@@ -6,12 +8,12 @@ exports.createDrugSchedule = async (req, res) => {
     if(!schedule_code || !schedule_name) {
       return res.status(400).json({ message: 'schedule_code and schedule_name are required' });
     }
-    const existingSchedule = await req.db.DrugSchedule.findOne({ where: { schedule_code } });
+    const existingSchedule = await DrugSchedule.findOne({ where: { schedule_code } });
     if (existingSchedule) {
       return res.status(409).json({ message: 'Drug Schedule with this code already exists' });
     }   
 
-    const newSchedule = await req.db.DrugSchedule.create({
+    const newSchedule = await DrugSchedule.create({
         schedule_code,  
         schedule_name,
         description,
@@ -28,7 +30,7 @@ exports.createDrugSchedule = async (req, res) => {
 // get all drug schedules
 exports.getAllDrugSchedules = async (req, res) => {
   try {
-    const scheduleList = await req.db.DrugSchedule.findAll();
+    const scheduleList = await DrugSchedule.findAll();
     res.status(200).json({ data: scheduleList });
     } catch (error) {
     console.error('Error fetching Drug Schedules:', error);
@@ -40,7 +42,7 @@ exports.getAllDrugSchedules = async (req, res) => {
 exports.getDrugScheduleById = async (req, res) => {
   try {
     const { id } = req.params;
-    const schedule = await req.db.DrugSchedule.findByPk(id);
+    const schedule = await DrugSchedule.findByPk(id);
     if (!schedule) {
         return res.status(404).json({ message: 'Drug Schedule not found' });
     }
@@ -56,12 +58,12 @@ exports.updateDrugSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const {schedule_code ,schedule_name ,description ,requires_prescription ,restricted_sale  } = req.body;
-    const schedule = await req.db.DrugSchedule.findByPk(id);
+    const schedule = await DrugSchedule.findByPk(id);
     if (!schedule) {
         return res.status(404).json({ message: 'Drug Schedule not found' });
     }
     if (schedule_code) {
-      const existingSchedule = await req.db.DrugSchedule.findOne({
+      const existingSchedule = await DrugSchedule.findOne({
         where: {
           schedule_code,
           schedule_id: { [Op.ne]: id },
@@ -92,7 +94,7 @@ exports.updateDrugSchedule = async (req, res) => {
 exports.deleteDrugSchedule = async (req, res) => {
   try { 
     const { id } = req.params;
-    const schedule = await req.db.DrugSchedule.findByPk(id);
+    const schedule = await DrugSchedule.findByPk(id);
     if (!schedule) {
         return res.status(404).json({ message: 'Drug Schedule not found' });
     }

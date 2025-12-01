@@ -12,6 +12,7 @@ exports.createItem = async (req, res) => {
       generic_name,
       manufacturer,
       hsn_id,
+      pack_size,
       schedule_id,
       description,
       item_type,
@@ -35,10 +36,11 @@ exports.createItem = async (req, res) => {
       }
     }
 
-    const newItem = await req.db.Item.create({
+    const newItem = await Item.create({
       sku,
       barcode: barcode || null,
       name,
+      pack_size:pack_size||null,
       brand: brand || null,
       generic_name: generic_name || null,
       manufacturer: manufacturer || null,
@@ -126,6 +128,7 @@ exports.updateItem = async (req, res) => {
         generic_name,   
         manufacturer,
         hsn_id,
+        pack_size,
         schedule_id,
         description,
         item_type,
@@ -167,6 +170,7 @@ exports.updateItem = async (req, res) => {
     if (schedule_id !== undefined) item.schedule_id = schedule_id;
     if (description !== undefined) item.description = description;
     if (item_type !== undefined) item.item_type = item_type;
+    if(pack_size!==undefined) item.pack_size=pack_size;
     await item.save();
     res.status(200).json({ message: 'Item updated successfully', data: item });
     } catch (error) {

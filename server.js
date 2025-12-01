@@ -15,6 +15,8 @@ const drugscheduleRouter = require("./routes/drugScheduleRoutes");
 const purchaseRouter = require("./routes/purchaseRoutes");
 const supplierRouter = require("./routes/supplierRoutes");
 const stockRouter = require("./routes/stockRoutes");
+const startCleanupJob = require("./utils/cleanupTokens");
+const authRouter = require("./routes/authRoutes");
 
 
 
@@ -22,7 +24,12 @@ const stockRouter = require("./routes/stockRoutes");
 const app = express();
 
 // middlewares
-app.use(cors());
+const allowedOrigins = ['http://localhost:5173']; // your frontend origin
+
+app.use(cors({
+  origin: allowedOrigins,  // allow specific origin
+  credentials: true,       // allow cookies/credentials
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -34,27 +41,39 @@ app.set('trust proxy', true);
 // route mounting
 app.use("/api/user",userRouter);
 app.use("/api/store",storeRouter);
-app.use("/api/item",itemRouter);
+app.use("/api/items",itemRouter);
 app.use("/api/hsn",hsnRouter);
-app.use("/api/drug-schedule",drugscheduleRouter);
+app.use("/api/drug_Schedule",drugscheduleRouter);
 app.use("/api/supplier",supplierRouter);
 app.use("/api/purchase",purchaseRouter);
 app.use("/api/stock",stockRouter);
+app.use("/api/auth",authRouter);
 
 
 const PORT = process.env.PORT || 5000;
 
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log("DB connected");
-    return sequelize.sync(); // { alter: true } in dev only
-  })
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("Unable to connect to DB:", err);
-  });
+async function initializeDatabase() {
+  try {
+    await sequelize.authenticate();
+    console.log(" Database connected");
+
+    if (process.env.NODE_ENV === "production") {
+      console.warn(" sequelize.sync() DISABLED in production.");
+    } else {
+      await sequelize.sync({ alter: false, force: false });
+      console.log("Development: Models synchronized safely.");
+    }
+
+    startCleanupJob();
+
+  } catch (err) {
+    console.error(" Database initialization failed:", err);
+    process.exit(1);
+  }
+}
+
+initializeDatabase();
+
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
