@@ -36,7 +36,8 @@ exports.register = async (req, res) => {
 default 10 data at one api call*/
 exports.getAllUsers = async (req, res) => {
   try {
-    const { search, role, status, page = 1, limit = 10 } = req.query;
+    const { search, role, status, page = 1, perPage = 10 } = req.query; // use perPage from frontend
+    const limit = parseInt(perPage); // convert to number
 
     const where = {};
     if (search) {
@@ -53,17 +54,18 @@ exports.getAllUsers = async (req, res) => {
     const { rows: users, count } = await User.findAndCountAll({
       where,
       offset,
-      limit: parseInt(limit),
+      limit,
       order: [['user_id', 'ASC']],
       attributes: { exclude: ['password_hash'] },
     });
-    const totalPages = Math.ceil(count / parseInt(limit));
+
+    const totalPages = Math.ceil(count / limit);
 
     res.json({
       total: count,
       totalPages,
       page: parseInt(page),
-      perPage: parseInt(limit),
+      perPage: limit,
       users
     });
 
@@ -72,6 +74,7 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 /* get user by id */

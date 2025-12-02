@@ -101,6 +101,11 @@ module.exports = (sequelize) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
+
+    PurchaseInvoice.hasMany(db.PurchaseItems, {
+  foreignKey: "purchase_id",
+  as: "items",
+});
   };
 
   return PurchaseInvoice;

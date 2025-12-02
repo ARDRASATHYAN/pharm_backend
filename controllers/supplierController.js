@@ -43,15 +43,44 @@ exports.createSupplier = async (req, res) => {
 };
 
 // get all suppliers
+
 exports.getAllSuppliers = async (req, res) => {
   try {
-    const supplierList = await Supplier.findAll();
-    res.status(200).json({ data: supplierList });
+    let { page = 1, limit = 10, search = "" } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { contact_person: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { rows: supplierList, count } = await Supplier.findAndCountAll({
+      where,
+      limit,
+      offset,
+      order: [["created_at", "DESC"]],
+    });
+
+    res.status(200).json({
+      data: supplierList,
+      total: count,
+      page,
+      perPage: limit,
+      totalPages: Math.ceil(count / limit),
+    });
   } catch (error) {
-    console.error('Error fetching Suppliers:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }       
+    console.error("Error fetching Suppliers:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
+
 
 // get supplier by id
 exports.getSupplierById = async (req, res) => {

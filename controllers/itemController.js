@@ -63,38 +63,54 @@ exports.createItem = async (req, res) => {
 
 // get all items with optional search by name or sku
 exports.getAllItems = async (req, res) => {
-  try { 
-    const {
-        search,
-        page = 1,
-        limit = 10,
-    } = req.query;      
-    const where = {};
-    if (search) {
-      where[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },    
-        { sku: { [Op.iLike]: `%${search}%` } },
-        ];
-    }
+  try {
+    let {
+      search = "",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
 
     const offset = (page - 1) * limit;
-    const { rows: itemList, count } = await Item.findAndCountAll({
-        where,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        include: [
-            { model: HSN, as: 'hsn' },
 
-            { model: DrugSchedule, as: 'schedule' },
-        ],
-        order: [['created_at', 'DESC']],
-    });
-    res.status(200).json({ data: itemList, total: count, page: parseInt(page), limit: parseInt(limit) });
-    } catch (error) {
-    console.error('Error fetching Items:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    const where = {};
+
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { sku: { [Op.iLike]: `%${search}%` } },
+      ];
     }
+
+    // Fetch with pagination
+    const { rows: itemList, count } = await Item.findAndCountAll({
+      where,
+      limit,
+      offset,
+      include: [
+        { model: HSN, as: "hsn" },
+        { model: DrugSchedule, as: "schedule" },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    const totalPages = Math.ceil(count / limit);
+
+    res.status(200).json({
+      data: itemList,
+      total: count,
+      page,
+      perPage: limit,
+      totalPages,
+    });
+  } catch (error) {
+    console.error("Error fetching Items:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
+
 
 // get item by id
 exports.getItemById = async (req, res) => {

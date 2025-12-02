@@ -30,13 +30,40 @@ exports.createDrugSchedule = async (req, res) => {
 // get all drug schedules
 exports.getAllDrugSchedules = async (req, res) => {
   try {
-    const scheduleList = await DrugSchedule.findAll();
-    res.status(200).json({ data: scheduleList });
-    } catch (error) {
-    console.error('Error fetching Drug Schedules:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    const { search = "", page = 1, perPage = 10 } = req.query;
+
+    const where = {};
+
+    // Optional search
+    if (search) {
+      where.schedule_name = { [Op.like]: `%${search}%` };
     }
+
+    const limit = parseInt(perPage);
+    const offset = (page - 1) * limit;
+
+    const { rows: data, count: total } = await DrugSchedule.findAndCountAll({
+      where,
+      offset,
+      limit,
+      order: [["schedule_id", "ASC"]],
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      total,
+      totalPages,
+      page: parseInt(page),
+      perPage: limit,
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching Drug Schedules:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
+
 
 // get drug schedule by id
 exports.getDrugScheduleById = async (req, res) => {

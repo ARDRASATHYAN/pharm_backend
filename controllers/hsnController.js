@@ -28,15 +28,49 @@ exports.createHSN = async (req, res) => {
 
 
 // get all hsns
+
 exports.getAllHSNs = async (req, res) => {
   try {
-    const hsnList = await HSN.findAll();
-    res.status(200).json({ data: hsnList });
+    let {
+      search = "",
+      page = 1,
+      perPage = 10,
+    } = req.query;
+
+    page = Number(page) || 1;
+    perPage = Number(perPage) || 10;
+
+    const where = {};
+
+    if (search) {
+      where[Op.or] = [
+        { hsn_code: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const offset = (page - 1) * perPage;
+
+    const { rows: hsns, count } = await HSN.findAndCountAll({
+      where,
+      offset,
+      limit: perPage,
+      order: [["hsn_id", "ASC"]],
+    });
+
+    res.status(200).json({
+      total: count,
+      totalPages: Math.ceil(count / perPage),
+      page,
+      perPage,
+      data: hsns,
+    });
+
   } catch (error) {
-    console.error('Error fetching HSNs:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error fetching HSNs:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
-};  
+};
 
 
 // get hsn by id
