@@ -247,71 +247,85 @@ exports.getPurchaseReport = async (req, res) => {
       invoice_no,
       item_id,
       page = 1,
-      limit = 10,
+      limit,
+      perPage
     } = req.query;
 
-    const offset = (page - 1) * limit;
+    const pageSize = Number(perPage || limit || 10);
+    const offset = (page - 1) * pageSize;
 
-    // 🔍 Build dynamic filter for invoices
+    // Filters on invoice table
     const invoiceWhere = {};
-    if (from_date && to_date) invoiceWhere.invoice_date = { [db.Sequelize.Op.between]: [from_date, to_date] };
+    if (from_date && to_date) {
+      invoiceWhere.invoice_date = {
+        [db.Sequelize.Op.between]: [from_date, to_date],
+      };
+    }
     if (supplier_id) invoiceWhere.supplier_id = supplier_id;
     if (store_id) invoiceWhere.store_id = store_id;
     if (invoice_no) invoiceWhere.invoice_no = invoice_no;
 
-    // 🔍 Build dynamic filter for items
     const itemWhere = {};
     if (item_id) itemWhere.item_id = item_id;
 
-    // 1️⃣ Count total invoices separately
-    const total = await PurchaseInvoice.count({ where: invoiceWhere });
-
-    // 2️⃣ Fetch paginated invoices with items
-    const rows = await PurchaseInvoice.findAll({
-      where: invoiceWhere,
+    // 1️⃣ Count total item rows
+    const total = await PurchaseItems.count({
+      where: itemWhere,
       include: [
         {
-          model: Supplier,
-          as: "supplier",
-          attributes: ["supplier_name", "phone", "email"]
+          model: PurchaseInvoice,
+          as: "purchaseInvoice",
+          where: invoiceWhere,
         },
+      ],
+    });
+
+    // 2️⃣ Fetch paginated item rows
+    const rows = await PurchaseItems.findAll({
+      where: itemWhere,
+      include: [
         {
-          model: Store,
-          as: "store",
-          attributes: ["store_name", "phone", "email"]
-        },
-        {
-          model: PurchaseItems,
-          as: "items",
-          where: Object.keys(itemWhere).length > 0 ? itemWhere : undefined,
-          required: false,
+          model: PurchaseInvoice,
+          as: "purchaseInvoice",
+          where: invoiceWhere,
           include: [
             {
-              model: Item,
-              as: "item",
-              attributes: ["name", "hsn_id"],
-              include: [
-                {
-                  model: HSN,
-                  as: "hsn",
-                  attributes: ["hsn_code"]
-                }
-              ]
-            }
-          ]
-        }
+              model: Supplier,
+              as: "supplier",
+              attributes: ["supplier_name", "phone", "email"],
+            },
+            {
+              model: Store,
+              as: "store",
+              attributes: ["store_name", "phone", "email"],
+            },
+          ],
+        },
+        {
+          model: Item,
+          as: "item",
+          attributes: ["name", "hsn_id"],
+          include: [
+            {
+              model: HSN,
+              as: "hsn",
+              attributes: ["hsn_code"],
+            },
+          ],
+        },
       ],
-      order: [["invoice_date", "DESC"]],
-      limit: Number(limit),
-      offset: Number(offset)
+      order: [["purchase_item_id", "DESC"]],
+      limit: pageSize,
+      offset,
     });
 
     return res.status(200).json({
       success: true,
       total,
       page: Number(page),
-      totalPages: Math.ceil(total / limit),
-      data: rows
+      perPage: pageSize,
+      totalPages: Math.ceil(total / pageSize),
+      data: rows,
     });
 
   } catch (error) {
@@ -319,6 +333,8 @@ exports.getPurchaseReport = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
 
 
 
