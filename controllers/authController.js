@@ -71,7 +71,13 @@ exports.refresh = async (req, res) => {
 
     // Find token in DB
 // Find token in DB
-const stored = await RefreshToken.findOne({ where: { token_hash: token } });
+const stored = await RefreshToken.findOne({
+  where: {
+    token_hash: token,
+    revoked: false
+  }
+});
+
 
     if (!stored || stored.revoked) {
       return res.status(403).json({ message: 'Refresh token revoked or not found' });

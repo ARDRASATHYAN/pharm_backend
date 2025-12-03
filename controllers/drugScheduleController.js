@@ -36,7 +36,7 @@ exports.getAllDrugSchedules = async (req, res) => {
 
     // Optional search
     if (search) {
-      where.schedule_name = { [Op.like]: `%${search}%` };
+      where.schedule_code = { [Op.like]: `%${search}%` };
     }
 
     const limit = parseInt(perPage);
