@@ -202,16 +202,21 @@ exports.createPurchase = async (req, res) => {
 
 exports.getAllInvoices = async (req, res) => {
   try {
-    // Optional: add filters (date range, supplier, store)
-    const { from_date, to_date, store_id, supplier_id } = req.query;
+    const { from_date, to_date, store_id, supplier_id, page = 1, perPage = 10 } = req.query;
 
     const whereInvoice = {};
     if (from_date) whereInvoice.invoice_date = { [db.Sequelize.Op.gte]: from_date };
-    if (to_date) whereInvoice.invoice_date = { ...whereInvoice.invoice_date, [db.Sequelize.Op.lte]: to_date };
+    if (to_date) whereInvoice.invoice_date = { 
+      ...whereInvoice.invoice_date, 
+      [db.Sequelize.Op.lte]: to_date 
+    };
     if (store_id) whereInvoice.store_id = store_id;
     if (supplier_id) whereInvoice.supplier_id = supplier_id;
 
-    const invoices = await PurchaseInvoice.findAll({
+    const limit = parseInt(perPage, 10);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    const { rows: invoices, count: total } = await PurchaseInvoice.findAndCountAll({
       where: whereInvoice,
       include: [
         { model: Supplier, as: "supplier" },
@@ -223,11 +228,18 @@ exports.getAllInvoices = async (req, res) => {
         },
       ],
       order: [["invoice_date", "DESC"]],
+      limit,
+      offset,
+      distinct: true,
+  col: 'purchase_id',
     });
 
     res.status(200).json({
       success: true,
-      total: invoices.length,
+      page: parseInt(page, 10),
+      perPage: limit,
+      total,
+      totalPages: Math.ceil(total / limit),
       data: invoices,
     });
   } catch (err) {
@@ -235,6 +247,7 @@ exports.getAllInvoices = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 
 
