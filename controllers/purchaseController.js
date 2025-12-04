@@ -6,8 +6,8 @@ const PurchaseItems = db.PurchaseItems;
 const Item = db.Item;
 const HSN = db.HSN;
 const StoreStock = db.StoreStock;
-const Supplier=db.Supplier;
-const Store=db.Store;
+const Supplier = db.Supplier;
+const Store = db.Store;
 
 
 
@@ -47,6 +47,7 @@ exports.createPurchase = async (req, res) => {
         invoice_no,
         invoice_date,
         store_id,
+        created_by: req.body.created_by,
         total_amount: total_amount ?? 0,
         total_gst: total_gst ?? 0,
         total_discount: total_discount ?? 0,
@@ -90,7 +91,7 @@ exports.createPurchase = async (req, res) => {
           .status(400)
           .json({ message: `Item with id ${item_id} not found` });
       }
-const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
+      const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
       const qtyNum = Number(qty || 0);
       const purchaseRateNum = Number(purchase_rate || 0);
       const discPercentNum = Number(discount_percent || 0);
@@ -115,7 +116,7 @@ const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
           item_id: dbItem.item_id,
 
           batch_no,
-          expiry_date:finalExpiryDate,
+          expiry_date: finalExpiryDate,
 
           qty: qtyNum,
           free_qty: freeQtyNum,
@@ -162,7 +163,7 @@ const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
             purchase_rate: purchaseRateNum,
             sale_rate: sale_rate ?? stock.sale_rate,
             gst_percent: gstPercentNum,
-            expiry_date:finalExpiryDate,
+            expiry_date: finalExpiryDate,
           },
           { transaction: t }
         );
@@ -172,7 +173,7 @@ const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
             store_id,
             item_id: dbItem.item_id,
             batch_no,
-            expiry_date:finalExpiryDate,
+            expiry_date: finalExpiryDate,
             mrp: mrpNum,
             purchase_rate: purchaseRateNum,
             sale_rate,
