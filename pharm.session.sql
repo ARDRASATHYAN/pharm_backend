@@ -1,0 +1,1 @@
+select * from  purchase_invoices;

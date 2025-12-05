@@ -79,8 +79,9 @@ exports.getAllItems = async (req, res) => {
 
     if (search) {
       where[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { sku: { [Op.iLike]: `%${search}%` } },
+       { name: { [Op.like]: `%${search}%` } },
+{ sku: { [Op.like]: `%${search}%` } },
+
       ];
     }
 
