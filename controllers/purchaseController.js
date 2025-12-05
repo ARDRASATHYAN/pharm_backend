@@ -357,6 +357,30 @@ exports.getPurchaseReport = async (req, res) => {
 
 
 
+exports.getPurchaseItems = async (req, res) => {
+  try {
+    const data = await PurchaseItems.findAll({
+      include: [
+        {
+          model: PurchaseInvoice,
+          as: "purchaseInvoice",          // 👈 MUST match the alias in belongsTo
+          attributes: ["invoice_no"],
+        },
+      ],
+    });
+    res.json(data);
+  } catch (error) {
+    console.error("Error fetching purchase items:", error);
+    res.status(500).json({ message: "Error fetching purchase items" });
+  }
+};
+
+
+
+
+
+
+
 
 
 

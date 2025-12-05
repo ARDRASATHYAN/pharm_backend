@@ -1,1 +1,1 @@
-select * from  purchase_invoices;
+select * from  purchase_returns;

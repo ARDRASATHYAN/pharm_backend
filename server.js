@@ -17,6 +17,7 @@ const supplierRouter = require("./routes/supplierRoutes");
 const stockRouter = require("./routes/stockRoutes");
 const startCleanupJob = require("./utils/cleanupTokens");
 const authRouter = require("./routes/authRoutes");
+const purchaseReturnRouter = require("./routes/purchaseReturnRoutes");
 
 
 
@@ -48,6 +49,7 @@ app.use("/api/supplier",supplierRouter);
 app.use("/api/purchase",purchaseRouter);
 app.use("/api/stock",stockRouter);
 app.use("/api/auth",authRouter);
+app.use("/api/purchase-return",purchaseReturnRouter)
 
 
 const PORT = process.env.PORT || 5000;

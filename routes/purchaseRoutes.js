@@ -1,5 +1,5 @@
 const express = require('express');
-const { createPurchase, getPurchaseReport, getAllInvoices } = require('../controllers/purchaseController');
+const { createPurchase, getPurchaseReport, getAllInvoices, getPurchaseItems } = require('../controllers/purchaseController');
 
 const purchaseRouter = express.Router();
 
@@ -7,6 +7,8 @@ const purchaseRouter = express.Router();
 purchaseRouter.get('/report', getPurchaseReport);
 purchaseRouter.post('/', createPurchase);
 purchaseRouter.get('/invoice', getAllInvoices);
+purchaseRouter.get('/items', getPurchaseItems);
+
 
 
  
