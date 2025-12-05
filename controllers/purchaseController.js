@@ -100,11 +100,18 @@ exports.createPurchase = async (req, res) => {
       const mrpNum = Number(mrp || 0);
 
       // 2.1️⃣ CALCULATIONS (match your frontend logic)
+      
       const grossAmount = qtyNum * purchaseRateNum; // Qty * Rate
       const discountAmount = (grossAmount * discPercentNum) / 100;
       const taxableAmount = grossAmount - discountAmount;
       const gstAmount = (taxableAmount * gstPercentNum) / 100;
       const lineTotal = taxableAmount + gstAmount;
+const finalSaleRate = sale_rate ?? calculateSaleRate({
+  mrp: mrpNum,
+  discount_percent: discPercentNum,
+  scheme_discount_percent,
+  scheme_discount_amount,
+});
 
       // Split GST into CGST/SGST (assuming intra-state)
       const halfGst = gstAmount / 2;
@@ -123,7 +130,7 @@ exports.createPurchase = async (req, res) => {
 
           purchase_rate: purchaseRateNum,
           mrp: mrpNum,
-          sale_rate,
+          sale_rate:finalSaleRate,
 
           discount_percent: discPercentNum,
           discount_amount: discountAmount,
@@ -161,7 +168,7 @@ exports.createPurchase = async (req, res) => {
             qty_in_stock: Number(stock.qty_in_stock || 0) + finalQty,
             mrp: mrpNum,
             purchase_rate: purchaseRateNum,
-            sale_rate: sale_rate ?? stock.sale_rate,
+            sale_rate: finalSaleRate,
             gst_percent: gstPercentNum,
             expiry_date: finalExpiryDate,
           },
