@@ -2,7 +2,7 @@
 'use strict';
 const { DataTypes } = require('sequelize');
 
-module.exports = (sequelize) => { 
+module.exports = (sequelize) => {
   const PurchaseReturn = sequelize.define('PurchaseReturn', {
     return_id: {
       type: DataTypes.INTEGER,
@@ -53,7 +53,12 @@ module.exports = (sequelize) => {
     PurchaseReturn.belongsTo(db.PurchaseInvoice, { foreignKey: 'purchase_id', as: 'purchase' });
     PurchaseReturn.belongsTo(db.Store, { foreignKey: 'store_id', as: 'store' });
     PurchaseReturn.belongsTo(db.User, { foreignKey: 'created_by', as: 'creator' });
+    PurchaseReturn.hasMany(db.PurchaseReturnItem, {
+      foreignKey: "return_id",
+      as: "purchaseReturnItems",
+
+    });
   }
 
-  return PurchaseReturn;
-}
+    return PurchaseReturn;
+  }

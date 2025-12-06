@@ -1,6 +1,6 @@
 const db = require('../models');
 const { removeStock } = require('../utils/StockService');
-const { PurchaseReturn, PurchaseReturnItem, PurchaseItems } = db;
+const { PurchaseReturn, PurchaseReturnItem, PurchaseItems,PurchaseInvoice } = db;
 
 
 exports.createPurchaseReturn = async (req, res) => {
@@ -135,3 +135,45 @@ exports.getPurchaseReturnById = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
+exports.getPurchaseReturn = async (req, res) => {
+  try {
+    let { page = 1, perPage = 10 } = req.query;
+    page = parseInt(page);
+    perPage = parseInt(perPage);
+
+    const offset = (page - 1) * perPage;
+
+    const { count, rows } = await PurchaseReturn.findAndCountAll({
+      offset,
+      limit: perPage,
+      order: [['return_id', 'ASC']], // Corrected primary key
+      include: [
+        {
+          model: PurchaseReturnItem,
+          as: "purchaseReturnItems", // Match the association alias
+        },
+        {
+          model: PurchaseInvoice,
+          as: "purchase", // Match the association alias
+        }
+      ],
+    });
+
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit: perPage,
+        totalPages: Math.ceil(count / perPage),
+      },
+    });
+
+  } catch (error) {
+    console.error('Error fetching Purchase Returns:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
