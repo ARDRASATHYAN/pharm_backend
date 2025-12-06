@@ -363,7 +363,7 @@ exports.getPurchaseItems = async (req, res) => {
       include: [
         {
           model: PurchaseInvoice,
-          as: "purchaseInvoice",          // 👈 MUST match the alias in belongsTo
+          as: "purchaseInvoice",        
           attributes: ["invoice_no"],
         },
       ],
@@ -374,6 +374,53 @@ exports.getPurchaseItems = async (req, res) => {
     res.status(500).json({ message: "Error fetching purchase items" });
   }
 };
+
+
+
+exports.getItemsByPurchaseId = async (req, res) => {
+  try {
+    const { purchase_id } = req.query;
+
+    if (!purchase_id) {
+      return res.status(400).json({
+        success: false,
+        message: "purchase_id is required",
+      });
+    }
+
+    const items = await PurchaseItems.findAll({
+      where: {
+        purchase_id,
+      },
+      include: [
+        {
+          model: Item,
+          as: "item",
+          attributes: ["name"], // include extra fields if needed
+       
+        include:[
+          {
+            model:HSN,
+            as:"hsn",
+            attributes:["hsn_code"]
+          }
+        ]
+         },
+      ],
+      order: [["purchase_item_id", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: items,
+    });
+  } catch (error) {
+    console.error("Error getting items by purchase_id:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
 
 
 
