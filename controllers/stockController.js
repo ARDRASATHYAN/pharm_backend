@@ -1,5 +1,5 @@
 const db = require('../models');
-const { StoreStock } = db; 
+const { StoreStock ,Item} = db; 
 const { Op } = require("sequelize");
 
 // Controller: getAllStocks with pagination
@@ -16,6 +16,13 @@ const { count, rows } = await StoreStock.findAndCountAll({
   offset,
   limit: perPage, // use perPage
   order: [['stock_id', 'ASC']],
+    include: [
+        {
+          model: Item,
+          as: "item",
+          attributes: ["item_id", "name"],
+        },
+      ],
 });
 
 
