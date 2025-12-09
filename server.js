@@ -20,6 +20,7 @@ const authRouter = require("./routes/authRoutes");
 const purchaseReturnRouter = require("./routes/purchaseReturnRoutes");
 const damagedRouter = require("./routes/damagedStockRoutes");
 const excessStockRouter = require("./routes/excessStockRoutes");
+const saleRouter = require("./routes/salesRoutes");
 
 
 
@@ -54,6 +55,7 @@ app.use("/api/auth",authRouter);
 app.use("/api/purchase-return",purchaseReturnRouter)
 app.use('/api/damaged-stock',damagedRouter)
 app.use('/api/excess-stock',excessStockRouter)
+app.use('/api/sales',saleRouter)
 
 
 const PORT = process.env.PORT || 5000;
