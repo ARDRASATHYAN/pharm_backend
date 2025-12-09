@@ -78,6 +78,7 @@ module.exports = (sequelize) => {
       foreignKey: "created_by",
       as: "creater",
     });
+    SalesInvoices.hasMany(db.SalesItems, { foreignKey: "sale_id", as: "items" });
   };
 
   return SalesInvoices;

@@ -95,3 +95,27 @@ exports.createSales = async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: err.message });
     }
 };
+
+
+exports.getAllSalesInvoice = async (req, res) => {
+  try {
+    const invoices = await SalesInvoices.findAll({
+      include: [
+        { model: SalesItems, as: "items" }, // optional: include related items
+        { model: Customer, as: "customer" }, // optional: include customer
+      ],
+      order: [["sale_id", "DESC"]], // optional: order by creation date
+    });
+
+    return res.status(200).json({
+      message: "Sales invoices fetched successfully",
+      data: invoices,
+    });
+  } catch (err) {
+    console.error("Get All Sales Invoices Error:", err);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
