@@ -30,7 +30,7 @@ module.exports = (sequelize) => {
 
             batch_no: {
                 type: DataTypes.STRING(100),
-                allowNull: false,
+                allowNull: true,
             },
 
             qty: {

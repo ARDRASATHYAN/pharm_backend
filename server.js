@@ -19,6 +19,7 @@ const startCleanupJob = require("./utils/cleanupTokens");
 const authRouter = require("./routes/authRoutes");
 const purchaseReturnRouter = require("./routes/purchaseReturnRoutes");
 const damagedRouter = require("./routes/damagedStockRoutes");
+const excessStockRouter = require("./routes/excessStockRoutes");
 
 
 
@@ -52,6 +53,7 @@ app.use("/api/stock",stockRouter);
 app.use("/api/auth",authRouter);
 app.use("/api/purchase-return",purchaseReturnRouter)
 app.use('/api/damaged-stock',damagedRouter)
+app.use('/api/excess-stock',excessStockRouter)
 
 
 const PORT = process.env.PORT || 5000;
