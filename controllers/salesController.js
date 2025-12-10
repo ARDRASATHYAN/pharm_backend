@@ -16,6 +16,8 @@ exports.createSales = async (req, res) => {
             net_amount,
             store_id,
             created_by,
+            doctor_name,
+            prescription_no,
             customer: customerData,
             item = []
         } = req.body;
@@ -45,6 +47,8 @@ exports.createSales = async (req, res) => {
             net_amount,
             store_id,
             customer_id,
+            prescription_no,
+            doctor_name,
             created_by
         }, { transaction: t });
 
