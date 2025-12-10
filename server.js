@@ -28,7 +28,7 @@ const saleRouter = require("./routes/salesRoutes");
 const app = express();
 
 // middlewares
-const allowedOrigins = ['http://localhost:5173']; // your frontend origin
+const allowedOrigins = ['http://localhost:5173','https://pharm-fontend.vercel.app']; // your frontend origin
 
 app.use(cors({
   origin: allowedOrigins,  // allow specific origin
