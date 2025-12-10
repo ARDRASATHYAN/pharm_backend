@@ -99,18 +99,34 @@ exports.createSales = async (req, res) => {
 
 exports.getAllSalesInvoice = async (req, res) => {
   try {
-    const invoices = await SalesInvoices.findAll({
+    let { search = "", page = 1, perpage = 10 } = req.query;
+
+    page = parseInt(page);
+    perpage = parseInt(perpage);
+
+    const offset = (page - 1) * perpage;
+
+    const { count, rows } = await SalesInvoices.findAndCountAll({
+      offset,
+      limit: perpage,
       include: [
-        { model: SalesItems, as: "items" }, // optional: include related items
-        { model: Customer, as: "customer" }, // optional: include customer
+        { model: SalesItems, as: "items" },
+        { model: Customer, as: "customer" },
       ],
-      order: [["sale_id", "DESC"]], // optional: order by creation date
+      order: [["sale_id", "DESC"]],
     });
 
     return res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit: perpage,
+        totalPages: Math.ceil(count / perpage),
+      },
       message: "Sales invoices fetched successfully",
-      data: invoices,
     });
+
   } catch (err) {
     console.error("Get All Sales Invoices Error:", err);
     return res.status(500).json({
@@ -119,3 +135,4 @@ exports.getAllSalesInvoice = async (req, res) => {
     });
   }
 };
+
