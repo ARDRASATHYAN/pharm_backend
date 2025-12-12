@@ -62,6 +62,7 @@ exports.createPurchase = async (req, res) => {
       const {
         item_id,
         batch_no,
+        pack_size,
         expiry_date,
         qty,
         purchase_rate,
@@ -100,18 +101,18 @@ exports.createPurchase = async (req, res) => {
       const mrpNum = Number(mrp || 0);
 
       // 2.1️⃣ CALCULATIONS (match your frontend logic)
-      
+
       const grossAmount = qtyNum * purchaseRateNum; // Qty * Rate
       const discountAmount = (grossAmount * discPercentNum) / 100;
       const taxableAmount = grossAmount - discountAmount;
       const gstAmount = (taxableAmount * gstPercentNum) / 100;
       const lineTotal = taxableAmount + gstAmount;
-const finalSaleRate = sale_rate ?? calculateSaleRate({
-  mrp: mrpNum,
-  discount_percent: discPercentNum,
-  scheme_discount_percent,
-  scheme_discount_amount,
-});
+      const finalSaleRate = sale_rate ?? calculateSaleRate({
+        mrp: mrpNum,
+        discount_percent: discPercentNum,
+        scheme_discount_percent,
+        scheme_discount_amount,
+      });
 
       // Split GST into CGST/SGST (assuming intra-state)
       const halfGst = gstAmount / 2;
@@ -123,6 +124,7 @@ const finalSaleRate = sale_rate ?? calculateSaleRate({
           item_id: dbItem.item_id,
 
           batch_no,
+          pack_size,
           expiry_date: finalExpiryDate,
 
           qty: qtyNum,
@@ -130,7 +132,7 @@ const finalSaleRate = sale_rate ?? calculateSaleRate({
 
           purchase_rate: purchaseRateNum,
           mrp: mrpNum,
-          sale_rate:finalSaleRate,
+          sale_rate: finalSaleRate,
 
           discount_percent: discPercentNum,
           discount_amount: discountAmount,
@@ -159,8 +161,10 @@ const finalSaleRate = sale_rate ?? calculateSaleRate({
         },
         transaction: t,
       });
-
-      const finalQty = qtyNum + freeQtyNum;
+      const packSizeNum = Number(pack_size) || 1;
+      const finalQty = packSizeNum * (qtyNum + freeQtyNum);
+      console.log('finalQty',finalQty);
+      
 
       if (stock) {
         await stock.update(
@@ -213,9 +217,9 @@ exports.getAllInvoices = async (req, res) => {
 
     const whereInvoice = {};
     if (from_date) whereInvoice.invoice_date = { [db.Sequelize.Op.gte]: from_date };
-    if (to_date) whereInvoice.invoice_date = { 
-      ...whereInvoice.invoice_date, 
-      [db.Sequelize.Op.lte]: to_date 
+    if (to_date) whereInvoice.invoice_date = {
+      ...whereInvoice.invoice_date,
+      [db.Sequelize.Op.lte]: to_date
     };
     if (store_id) whereInvoice.store_id = store_id;
     if (supplier_id) whereInvoice.supplier_id = supplier_id;
@@ -238,7 +242,7 @@ exports.getAllInvoices = async (req, res) => {
       limit,
       offset,
       distinct: true,
-  col: 'purchase_id',
+      col: 'purchase_id',
     });
 
     res.status(200).json({
@@ -363,7 +367,7 @@ exports.getPurchaseItems = async (req, res) => {
       include: [
         {
           model: PurchaseInvoice,
-          as: "purchaseInvoice",        
+          as: "purchaseInvoice",
           attributes: ["invoice_no"],
         },
       ],
@@ -397,15 +401,15 @@ exports.getItemsByPurchaseId = async (req, res) => {
           model: Item,
           as: "item",
           attributes: ["name"], // include extra fields if needed
-       
-        include:[
-          {
-            model:HSN,
-            as:"hsn",
-            attributes:["hsn_code"]
-          }
-        ]
-         },
+
+          include: [
+            {
+              model: HSN,
+              as: "hsn",
+              attributes: ["hsn_code"]
+            }
+          ]
+        },
       ],
       order: [["purchase_item_id", "ASC"]],
     });
