@@ -1,7 +1,7 @@
 // controllers/salesController.js
 const db = require('../models');
 const { removeStock } = require('../utils/StockService');
-const { SalesInvoices, SalesItems, Customer } = db;
+const { SalesInvoices, SalesItems, Customer,Item,HSN } = db;
 
 exports.createSales = async (req, res) => {
     const t = await db.sequelize.transaction();
@@ -137,6 +137,59 @@ exports.getAllSalesInvoice = async (req, res) => {
       message: "Internal server error",
       error: err.message,
     });
+  }
+};
+
+
+
+exports.getItemsBySalesId = async (req, res) => {
+  try {
+    const {sale_id } = req.query;
+
+    if (!sale_id) {
+      return res.status(400).json({
+        success: false,
+        message: "sale_id is required",
+      });
+    }
+
+    const items = await SalesItems.findAll({
+      where: {
+        sale_id,
+      },
+      include: [
+        {
+          model: Item,
+          as: "item",
+          // attributes: ["name"], 
+
+          include: [
+            {
+              model: HSN,
+              as: "hsn",
+              attributes: ["hsn_code"]
+            }
+          ]
+          
+        },
+          {
+            model:SalesInvoices,
+            as:"invoice"
+          }
+      
+        
+       
+      ],
+      order: [["sale_item_id", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: items,
+    });
+  } catch (error) {
+    console.error("Error getting items by purchase_id:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 

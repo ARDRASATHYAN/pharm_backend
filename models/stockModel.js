@@ -65,6 +65,28 @@ module.exports = (sequelize) => {
         allowNull: false,
         defaultValue: 0,
       },
+
+      cost_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+      },
+
+
+      sale_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+      },
+      discount_percent: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0,
+      },
+
+      discount_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0,
+      },
     },
     {
       tableName: 'store_stock',

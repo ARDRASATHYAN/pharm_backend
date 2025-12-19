@@ -1,4 +1,5 @@
 const db = require("../models");
+const calculateSaleRate = require("../utils/calculateSaleRate");
 const { convertToLastDateOfMonth } = require("../utils/convertToLastDateOfMonth");
 
 const PurchaseInvoice = db.PurchaseInvoice;
@@ -27,7 +28,6 @@ exports.createPurchase = async (req, res) => {
       net_amount,
     } = req.body;
 
-    // Basic validation
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Items are required" });
     }
@@ -56,8 +56,7 @@ exports.createPurchase = async (req, res) => {
       { transaction: t }
     );
 
-
-    // 2️⃣ LOOP THROUGH ALL ITEMS
+    // 2️⃣ LOOP ITEMS
     for (const item of items) {
       const {
         item_id,
@@ -67,65 +66,94 @@ exports.createPurchase = async (req, res) => {
         qty,
         purchase_rate,
         mrp,
-        discount_percent,
         gst_percent,
 
-        // optional fields for now – you can add them from UI later if needed
+        // SALES DISCOUNT
+        discount_percent = 0,
+        discount_amount = 0,
+
+        // PURCHASE DISCOUNT
+        p_discount_percent = 0,
+        p_discount_amount = 0,
+        p_discount_type = "percent",
+
         free_qty = 0,
         sale_rate = null,
+
+        // SCHEME DISCOUNT
         scheme_discount_percent = 0,
         scheme_discount_amount = 0,
+        scheme_discount_type = "percent",
       } = item;
 
       if (!item_id) {
         await t.rollback();
-        return res
-          .status(400)
-          .json({ message: "item_id is required for each item row" });
+        return res.status(400).json({ message: "item_id is required for each item" });
       }
 
-      // Make sure item exists
       const dbItem = await Item.findByPk(item_id);
       if (!dbItem) {
         await t.rollback();
-        return res
-          .status(400)
-          .json({ message: `Item with id ${item_id} not found` });
+        return res.status(400).json({ message: `Item ${item_id} not found` });
       }
-      const finalExpiryDate = convertToLastDateOfMonth(expiry_date);
+
       const qtyNum = Number(qty || 0);
-      const purchaseRateNum = Number(purchase_rate || 0);
-      const discPercentNum = Number(discount_percent || 0);
-      const gstPercentNum = Number(gst_percent || 0);
       const freeQtyNum = Number(free_qty || 0);
+      const purchaseRateNum = Number(purchase_rate || 0);
       const mrpNum = Number(mrp || 0);
+      const gstPercentNum = Number(gst_percent || 0);
 
-      // 2.1️⃣ CALCULATIONS (match your frontend logic)
+      const pDiscPercentNum = Number(p_discount_percent || 0);
+      const pDiscAmountNum = Number(p_discount_amount || 0);
 
-      const grossAmount = qtyNum * purchaseRateNum; // Qty * Rate
-      const discountAmount = (grossAmount * discPercentNum) / 100;
-      const taxableAmount = grossAmount - discountAmount;
+      const schemeDiscPercentNum = Number(scheme_discount_percent || 0);
+      const schemeDiscAmountNum = Number(scheme_discount_amount || 0);
+
+      // ---------- GROSS AMOUNT ----------
+      const grossAmount = qtyNum * purchaseRateNum;
+
+      // ---------- PURCHASE DISCOUNT ----------
+      const pDiscType = (p_discount_type || "percent").toLowerCase();
+      let purchaseDiscountAmount = 0;
+      if (pDiscType === "amount") {
+        purchaseDiscountAmount = pDiscAmountNum;
+      } else {
+        purchaseDiscountAmount = (grossAmount * pDiscPercentNum) / 100;
+      }
+
+      // ---------- SCHEME DISCOUNT ----------
+      const schemeDiscType = (scheme_discount_type || "percent").toLowerCase();
+      let schemeDiscount = 0;
+      if (schemeDiscType === "amount") {
+        schemeDiscount = schemeDiscAmountNum;
+      } else {
+        schemeDiscount = (grossAmount * schemeDiscPercentNum) / 100;
+      }
+
+      // ---------- TAXABLE AMOUNT ----------
+      const taxableAmount = grossAmount - purchaseDiscountAmount - schemeDiscount;
+
+      // ---------- GST ----------
       const gstAmount = (taxableAmount * gstPercentNum) / 100;
-      const lineTotal = taxableAmount + gstAmount;
-      const finalSaleRate = sale_rate ?? calculateSaleRate({
-        mrp: mrpNum,
-        discount_percent: discPercentNum,
-        scheme_discount_percent,
-        scheme_discount_amount,
-      });
+      const cgst = gstAmount / 2;
+      const sgst = gstAmount / 2;
+      const igst = 0;
 
-      // Split GST into CGST/SGST (assuming intra-state)
-      const halfGst = gstAmount / 2;
+      // ---------- TOTAL LINE ----------
+      const totalAmount = taxableAmount + gstAmount;
 
-      // 2.2️⃣ CREATE PURCHASE ITEM (ALL FIELDS FROM MODEL)
+      // ---------- SALE RATE ----------
+      const finalSaleRate = sale_rate ?? calculateSaleRate({ mrp: mrpNum, discount_percent });
+
+      // ---------- CREATE PURCHASE ITEM ----------
       await PurchaseItems.create(
         {
           purchase_id: purchaseInvoice.purchase_id,
-          item_id: dbItem.item_id,
+          item_id,
 
           batch_no,
           pack_size,
-          expiry_date: finalExpiryDate,
+          expiry_date: convertToLastDateOfMonth(expiry_date),
 
           qty: qtyNum,
           free_qty: freeQtyNum,
@@ -134,37 +162,37 @@ exports.createPurchase = async (req, res) => {
           mrp: mrpNum,
           sale_rate: finalSaleRate,
 
-          discount_percent: discPercentNum,
-          discount_amount: discountAmount,
+          discount_percent,
+          discount_amount,
 
-          scheme_discount_percent,
-          scheme_discount_amount,
+          p_discount_percent: pDiscPercentNum,
+          p_discount_amount: purchaseDiscountAmount,
+
+          scheme_discount_percent: schemeDiscPercentNum,
+          scheme_discount_amount: schemeDiscount,
 
           taxable_amount: taxableAmount,
 
           gst_percent: gstPercentNum,
-          cgst: halfGst,
-          sgst: halfGst,
-          igst: 0,
+          cgst,
+          sgst,
+          igst,
 
-          total_amount: lineTotal,
+          total_amount: totalAmount,
         },
         { transaction: t }
       );
 
-      // 2.3️⃣ UPDATE / CREATE STORE STOCK
+      // ---------- UPDATE STOCK ----------
+      const packSizeNum = Number(pack_size || 1);
+      const finalQty = packSizeNum * (qtyNum + freeQtyNum);
+      const unitSalePrice = finalSaleRate / packSizeNum;
+const unitCostPrice = totalAmount / finalQty;
+
       let stock = await StoreStock.findOne({
-        where: {
-          store_id,
-          item_id: dbItem.item_id,
-          batch_no: batch_no || null,
-        },
+        where: { store_id, item_id, batch_no: batch_no || null },
         transaction: t,
       });
-      const packSizeNum = Number(pack_size) || 1;
-      const finalQty = packSizeNum * (qtyNum + freeQtyNum);
-      console.log('finalQty',finalQty);
-      
 
       if (stock) {
         await stock.update(
@@ -174,7 +202,11 @@ exports.createPurchase = async (req, res) => {
             purchase_rate: purchaseRateNum,
             sale_rate: finalSaleRate,
             gst_percent: gstPercentNum,
-            expiry_date: finalExpiryDate,
+            expiry_date: convertToLastDateOfMonth(expiry_date),
+            sale_price:unitSalePrice,
+            cost_price:unitCostPrice,
+              discount_percent,
+          discount_amount,
           },
           { transaction: t }
         );
@@ -182,21 +214,24 @@ exports.createPurchase = async (req, res) => {
         await StoreStock.create(
           {
             store_id,
-            item_id: dbItem.item_id,
+            item_id,
             batch_no,
-            expiry_date: finalExpiryDate,
+            expiry_date: convertToLastDateOfMonth(expiry_date),
             mrp: mrpNum,
             purchase_rate: purchaseRateNum,
-            sale_rate,
+            sale_rate: finalSaleRate,
             gst_percent: gstPercentNum,
             qty_in_stock: finalQty,
+            sale_price: unitSalePrice,   
+    cost_price: unitCostPrice,
+      discount_percent,
+          discount_amount,
           },
           { transaction: t }
         );
       }
     }
 
-    // 3️⃣ COMMIT TRANSACTION
     await t.commit();
 
     return res.status(201).json({
@@ -209,6 +244,8 @@ exports.createPurchase = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
 
 
 exports.getAllInvoices = async (req, res) => {
@@ -400,7 +437,7 @@ exports.getItemsByPurchaseId = async (req, res) => {
         {
           model: Item,
           as: "item",
-          attributes: ["name"], // include extra fields if needed
+          // attributes: ["name"], 
 
           include: [
             {
@@ -409,7 +446,15 @@ exports.getItemsByPurchaseId = async (req, res) => {
               attributes: ["hsn_code"]
             }
           ]
+          
         },
+          {
+            model:PurchaseInvoice,
+            as:"purchaseInvoice"
+          }
+      
+        
+       
       ],
       order: [["purchase_item_id", "ASC"]],
     });

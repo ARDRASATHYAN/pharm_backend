@@ -59,6 +59,17 @@ module.exports = (sequelize) => {
         allowNull: true,
         defaultValue: 0,
       },
+      p_discount_percent: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0,
+      },
+
+      p_discount_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0,
+      },
 
       scheme_discount_percent: {
         type: DataTypes.DECIMAL(5, 2),
