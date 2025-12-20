@@ -1,3 +1,4 @@
+const { where, Model } = require('sequelize');
 const db = require('../models');
 const { addStock } = require('../utils/StockService');
 const { SalesInvoices, SalesItems, SalesReturn, SaleReturnItem, Item } = db;
@@ -131,3 +132,113 @@ exports.createSalesReturn = async (req, res) => {
     });
   }
 };
+
+
+// Controller to get all sales returns with their items
+exports.getAllSaleReturn = async (req, res) => {
+  try {
+    let {
+      page = 1,
+      perPage = 10,
+      from_date,
+      to_date,
+      search = "",
+    } = req.query;
+
+    page = parseInt(page);
+    perPage = parseInt(perPage);
+    const offset = (page - 1) * perPage;
+
+    // ----------------------------
+    // WHERE conditions
+    // ----------------------------
+    const whereCondition = {};
+
+    // Date filter
+    if (from_date && to_date) {
+      whereCondition.createdAt = {
+        [Op.between]: [from_date, to_date],
+      };
+    }
+
+    // Search filter (invoice / customer)
+    if (search) {
+      whereCondition[Op.or] = [
+        { invoice_no: { [Op.like]: `%${search}%` } },
+        { customer_name: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    // ----------------------------
+    // Query
+    // ----------------------------
+    const { count, rows } = await SalesReturn.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: SaleReturnItem,
+          as: "saleReturnItems",
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: perPage,
+      offset,
+    });
+
+    // ----------------------------
+    // Response
+    // ----------------------------
+    res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        perPage,
+        totalPages: Math.ceil(count / perPage),
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching sale returns:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch sale returns",
+      error: err.message,
+    });
+  }
+};
+
+exports.getSaleReturnItems = async (req, res) => {
+  try {
+    const { return_id } = req.query;
+
+    if (!return_id) {
+      return res.status(400).json({
+        success: false,
+        message: "return_id is required",
+      });
+    }
+
+    const items = await SaleReturnItem.findAll({
+      where: { return_id },   // ✅ MATCH DB COLUMN
+      order: [["return_item_id", "ASC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: items,
+    });
+  } catch (error) {
+    console.error("Error fetching sale return items:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch sale return items",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
