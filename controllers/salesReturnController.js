@@ -1,7 +1,7 @@
 const { where, Model } = require('sequelize');
 const db = require('../models');
 const { addStock } = require('../utils/StockService');
-const { SalesInvoices, SalesItems, SalesReturn, SaleReturnItem, Item, HSN } = db;
+const { SalesInvoices, SalesItems, SalesReturn, SaleReturnItem, Item,HSN } = db;
 
 exports.createSalesReturn = async (req, res) => {
   const t = await db.sequelize.transaction();
@@ -93,9 +93,9 @@ exports.createSalesReturn = async (req, res) => {
         batch_no,
         qty: qtyNum,
         rate: rateNum,
-        taxable_amount: totalAmount,
+        taxable_amount:totalAmount,
         gst_percent,
-        gst_amount: gstAmount,
+        gst_amount:gstAmount,
       }, { transaction: t });
 
       // 📈 Add stock back
@@ -224,20 +224,20 @@ exports.getSaleReturnItems = async (req, res) => {
     const items = await SaleReturnItem.findAll({
       where: { return_id },   // ✅ MATCH DB COLUMN
       order: [["return_item_id", "ASC"]],
-      include: [{
-        model: Item,
-        as: "item",
-        include: [{
-          model: HSN,
-          as: "hsn"
-        }]
+      include:[{
+model:Item,
+as:"item",
+      include:[{
+model:HSN,
+as:"hsn"
+      }]
       },
       {
-        model: SalesReturn,
-        as: "saleReturn"
+        model:SalesReturn,
+        as:"saleReturn"
       }
 
-      ]
+    ]
     });
 
     res.status(200).json({
