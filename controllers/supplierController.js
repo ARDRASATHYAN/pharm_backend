@@ -144,3 +144,13 @@ exports.deleteSupplier = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+exports.totalSuppliers = async (req, res) => {
+  try {
+    const total = await Supplier.count(); // counts all suppliers
+    return res.status(200).json({ total });
+  } catch (error) {
+    console.error("Error fetching total suppliers:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
