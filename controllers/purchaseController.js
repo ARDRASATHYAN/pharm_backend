@@ -1,14 +1,25 @@
 const db = require("../models");
 const calculateSaleRate = require("../utils/calculateSaleRate");
 const { convertToLastDateOfMonth } = require("../utils/convertToLastDateOfMonth");
+const {
+  sequelize,          // ✅ Sequelize instance
+  PurchaseInvoice,
+  PurchaseItems,
+  Item,
+  HSN,
+  StoreStock,
+  Supplier,
+  Store,
+} = db;
 
-const PurchaseInvoice = db.PurchaseInvoice;
-const PurchaseItems = db.PurchaseItems;
-const Item = db.Item;
-const HSN = db.HSN;
-const StoreStock = db.StoreStock;
-const Supplier = db.Supplier;
-const Store = db.Store;
+// const PurchaseInvoice = db.PurchaseInvoice;
+// const PurchaseItems = db.PurchaseItems;
+// const Item = db.Item;
+// const HSN = db.HSN;
+// const StoreStock = db.StoreStock;
+// const Supplier = db.Supplier;
+// const Store = db.Store;
+
 
 
 
@@ -466,6 +477,64 @@ exports.getItemsByPurchaseId = async (req, res) => {
   } catch (error) {
     console.error("Error getting items by purchase_id:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+exports.getTodayPurchaseNetAmount = async (req, res) => {
+  try {
+    const { store_id } = req.query;
+
+    if (!store_id) {
+      return res.status(400).json({ message: "store_id is required" });
+    }
+
+    // Get today's date (YYYY-MM-DD)
+    const today = new Date().toISOString().split("T")[0];
+
+    const result = await PurchaseInvoice.findOne({
+      where: {
+        store_id,
+        invoice_date: today,
+      },
+      attributes: [
+        [sequelize.fn("SUM", sequelize.col("net_amount")), "todayNetAmount"],
+      ],
+      raw: true,
+    });
+
+    res.json({
+      todayNetAmount: parseFloat(result.todayNetAmount || 0),
+    });
+  } catch (error) {
+    console.error("Error fetching today's sales:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+exports.getTotalPurchaseNetAmount = async (req, res) => {
+  try {
+    const { store_id } = req.query;
+
+    if (!store_id) {
+      return res.status(400).json({ message: "store_id is required" });
+    }
+
+    const result = await PurchaseInvoice.findOne({
+      where: { store_id },
+      attributes: [
+        [sequelize.fn("SUM", sequelize.col("net_amount")), "totalNetAmount"],
+      ],
+      raw: true,
+    });
+
+    res.json({
+      totalNetAmount: parseFloat(result.totalNetAmount || 0),
+    });
+  } catch (error) {
+    console.error("Error calculating total sales:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
