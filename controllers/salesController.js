@@ -1,7 +1,7 @@
 // controllers/salesController.js
 const db = require('../models');
 const { removeStock } = require('../utils/StockService');
-const { SalesInvoices, SalesItems, Customer,Item,HSN } = db;
+const { SalesInvoices, SalesItems, Customer,Item,HSN ,sequelize} = db;
 
 exports.createSales = async (req, res) => {
     const t = await db.sequelize.transaction();
@@ -190,6 +190,80 @@ exports.getItemsBySalesId = async (req, res) => {
   } catch (error) {
     console.error("Error getting items by purchase_id:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+exports.getTotalCustomers = async (req, res) => {
+  try {
+    const { store_id } = req.query;
+
+    const total = await SalesInvoices.count({
+      where: store_id ? { store_id } : {},
+      distinct: true,
+      col: "customer_id",
+    });
+
+    return res.status(200).json({ total });
+  } catch (error) {
+    console.error("Error fetching total customers:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getTotalSalesNetAmount = async (req, res) => {
+  try {
+    const { store_id } = req.query;
+
+    if (!store_id) {
+      return res.status(400).json({ message: "store_id is required" });
+    }
+
+    const result = await SalesInvoices.findOne({
+      where: { store_id },
+      attributes: [
+        [sequelize.fn("SUM", sequelize.col("net_amount")), "totalNetAmount"],
+      ],
+      raw: true,
+    });
+
+    res.json({
+      totalNetAmount: parseFloat(result.totalNetAmount || 0),
+    });
+  } catch (error) {
+    console.error("Error calculating total sales:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getTodaySalesNetAmount = async (req, res) => {
+  try {
+    const { store_id } = req.query;
+
+    if (!store_id) {
+      return res.status(400).json({ message: "store_id is required" });
+    }
+
+    // Get today's date (YYYY-MM-DD)
+    const today = new Date().toISOString().split("T")[0];
+
+    const result = await SalesInvoices.findOne({
+      where: {
+        store_id,
+        bill_date: today,
+      },
+      attributes: [
+        [sequelize.fn("SUM", sequelize.col("net_amount")), "todayNetAmount"],
+      ],
+      raw: true,
+    });
+
+    res.json({
+      todayNetAmount: parseFloat(result.todayNetAmount || 0),
+    });
+  } catch (error) {
+    console.error("Error fetching today's sales:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
