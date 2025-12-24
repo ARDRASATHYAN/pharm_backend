@@ -177,4 +177,19 @@ exports.getExpiringBatches = async (req, res) => {
   }
 };
 
+exports.totalMedicines = async (req, res) => {
+  try {
+    const total = await StoreStock.count({
+      where: { store_id: 1 }, // optional filter by store
+      distinct: true,
+      col: "item_id",
+    });
+
+    return res.status(200).json({ total });
+  } catch (error) {
+    console.error("Error fetching total medicines:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 
