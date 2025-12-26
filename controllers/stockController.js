@@ -20,7 +20,7 @@ const { count, rows } = await StoreStock.findAndCountAll({
         {
           model: Item,
           as: "item",
-          attributes: ["item_id", "name"],
+          // attributes: ["item_id", "name"],
         },
       ],
 });

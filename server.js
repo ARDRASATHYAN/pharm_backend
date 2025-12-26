@@ -22,6 +22,7 @@ const damagedRouter = require("./routes/damagedStockRoutes");
 const excessStockRouter = require("./routes/excessStockRoutes");
 const saleRouter = require("./routes/salesRoutes");
 const salesReturnRouter = require("./routes/salesReturnRoutes");
+const profitRouter = require("./routes/profitRoute");
 
 
 
@@ -58,6 +59,7 @@ app.use('/api/damaged-stock',damagedRouter)
 app.use('/api/excess-stock',excessStockRouter)
 app.use('/api/sales',saleRouter)
 app.use('/api/sales-return',salesReturnRouter)
+app.use('/api/profit',profitRouter)
 
 
 const PORT = process.env.PORT || 5000;
