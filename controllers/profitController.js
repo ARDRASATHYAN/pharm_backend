@@ -4,9 +4,10 @@ const { SalesItems, SalesInvoices, Item, StoreStock } = db;
 
 exports.getProfitMarginReport = async (req, res) => {
   try {
-    const { store_id, from_date, to_date, page = 1, limit = 10 } = req.query;
-   page = parseInt(page) || 1;
-    limit = parseInt(limit) || 10;
+   const { store_id, from_date, to_date } = req.query;
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     // Filter for invoices
     const invoiceWhere = {};

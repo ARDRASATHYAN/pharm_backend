@@ -1,6 +1,7 @@
 const express = require('express');
 const { getProfitMarginReport } = require('../controllers/profitController');
 
+
 const profitRouter = express.Router();
 
 
