@@ -1,6 +1,8 @@
 const db = require('../models');
 const { StoreStock, Item, Store } = db;
 const { Op } = require("sequelize");
+const sequelize = db.sequelize;
+const { QueryTypes } = require("sequelize");
 
 // Controller: getAllStocks with pagination
 exports.getAllStocks = async (req, res) => {
@@ -362,4 +364,180 @@ exports.getOutOfStockItems = async (req, res) => {
 
 
 
+exports.getDeadStockReport = async (req, res) => {
+  try {
+    const storeId = parseInt(req.query.store_id);
+    const days = parseInt(req.query.days) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
+    if (!storeId) {
+      return res.status(400).json({
+        success: false,
+        message: "store_id is required",
+      });
+    }
+
+    const offset = (page - 1) * limit;
+
+    /* ---------- BASE QUERY (no limit) ---------- */
+    const baseQuery = `
+      FROM store_stock ss
+      JOIN items_master i ON i.item_id = ss.item_id
+      LEFT JOIN sales_items si 
+        ON si.item_id = ss.item_id 
+        AND si.batch_no = ss.batch_no
+      LEFT JOIN sales_invoices inv 
+        ON inv.sale_id = si.sale_id 
+        AND inv.store_id = ss.store_id
+      WHERE ss.store_id = :storeId
+        AND ss.qty_in_stock > 0
+      GROUP BY ss.stock_id
+      HAVING
+        MAX(inv.bill_date) IS NULL
+        OR MAX(inv.bill_date) < DATE_SUB(CURDATE(), INTERVAL :days DAY)
+    `;
+
+    /* ---------- TOTAL COUNT ---------- */
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM (
+        SELECT ss.stock_id
+        ${baseQuery}
+      ) AS dead_stock
+    `;
+
+    const countResult = await sequelize.query(countQuery, {
+      replacements: { storeId, days },
+      type: QueryTypes.SELECT,
+    });
+
+    const totalRecords = countResult[0].total;
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    /* ---------- PAGINATED DATA ---------- */
+    const dataQuery = `
+      SELECT
+        ss.stock_id,
+        ss.item_id,
+        i.name,
+        ss.batch_no,
+        ss.expiry_date,
+        ss.qty_in_stock,
+        ss.cost_price,
+        (ss.qty_in_stock * ss.cost_price) AS stock_value,
+        MAX(inv.bill_date) AS last_sale_date,
+        DATEDIFF(CURDATE(), MAX(inv.bill_date)) AS days_since_last_sale
+      ${baseQuery}
+      ORDER BY days_since_last_sale DESC
+      LIMIT :limit OFFSET :offset
+    `;
+
+    const data = await sequelize.query(dataQuery, {
+      replacements: { storeId, days, limit, offset },
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({
+      success: true,
+      store_id: storeId,
+      days,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+      },
+      data,
+    });
+
+  } catch (error) {
+    console.error("Dead Stock Pagination Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch dead stock report",
+      error: error.message,
+    });
+  }
+};
+
+
+exports.getFastMovingStock = async (req, res) => {
+  try {
+    const storeId = parseInt(req.query.store_id);
+    const days = parseInt(req.query.days) || 30;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    if (!storeId) {
+      return res.status(400).json({
+        success: false,
+        message: "store_id is required",
+      });
+    }
+
+    const baseQuery = `
+      FROM sales_items si
+      JOIN sales_invoices inv ON inv.sale_id = si.sale_id
+      JOIN items_master i ON i.item_id = si.item_id
+      WHERE inv.store_id = :storeId
+        AND inv.bill_date >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
+      GROUP BY i.item_id
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM (
+        SELECT i.item_id
+        ${baseQuery}
+      ) AS fast_items
+    `;
+
+    const countResult = await sequelize.query(countQuery, {
+      replacements: { storeId, days },
+      type: QueryTypes.SELECT,
+    });
+
+    const totalRecords = countResult[0].total;
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const dataQuery = `
+      SELECT
+        i.item_id,
+        i.name,
+        SUM(si.qty) AS total_sold_qty,
+        COUNT(DISTINCT inv.sale_id) AS bill_count,
+        MAX(inv.bill_date) AS last_sale_date
+      ${baseQuery}
+      ORDER BY total_sold_qty DESC
+      LIMIT :limit OFFSET :offset
+    `;
+
+    const data = await sequelize.query(dataQuery, {
+      replacements: { storeId, days, limit, offset },
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({
+      success: true,
+      store_id: storeId,
+      days,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+      },
+      data,
+    });
+
+  } catch (error) {
+    console.error("Fast Moving Stock Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch fast moving stock",
+      error: error.message,
+    });
+  }
+};
