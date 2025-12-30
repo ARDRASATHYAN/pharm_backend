@@ -26,9 +26,9 @@ exports.createSalesReturn = async (req, res) => {
         message: 'Sale invoice not found',
       });
     }
+  let totalTaxable = 0;
+let totalGst = 0;
 
-    let totalAmount = 0;
-    let totalGst = 0;
 
     // 🧾 Create SALES RETURN HEADER (temporary)
     const salesReturn = await SalesReturn.create({
@@ -78,13 +78,21 @@ exports.createSalesReturn = async (req, res) => {
       if (qtyNum > Number(saleItem.qty)) {
         throw new Error('Return quantity exceeds sold quantity');
       }
+const taxablePerUnit = rateNum / (1 + gst_percent / 100);
+  const gstPerUnit = rateNum - taxablePerUnit;
+
+  const taxableAmount = taxablePerUnit * qtyNum;
+  const gstAmount = gstPerUnit * qtyNum;
+
+  totalTaxable += taxableAmount;
+  totalGst += gstAmount;
 
       // 💰 Calculations
-      const amount = qtyNum * rateNum;
-      const gstAmount = (amount * Number(gst_percent)) / 100;
+      // const amount = qtyNum * rateNum;
+      // const gstAmount = (amount * Number(gst_percent)) / 100;
 
-      totalAmount += amount;
-      totalGst += gstAmount;
+      // totalAmount += amount;
+      // totalGst += gstAmount;
 
       // 🧾 Create RETURN ITEM
       await SaleReturnItem.create({
@@ -93,9 +101,10 @@ exports.createSalesReturn = async (req, res) => {
         batch_no,
         qty: qtyNum,
         rate: rateNum,
-        taxable_amount:totalAmount,
+        taxable_amount:taxableAmount,
         gst_percent,
         gst_amount:gstAmount,
+        total_amount:taxableAmount+gstAmount,
       }, { transaction: t });
 
       // 📈 Add stock back
@@ -110,9 +119,9 @@ exports.createSalesReturn = async (req, res) => {
 
     // 🧮 Update totals
     await salesReturn.update({
-      total_taxable: totalAmount,
+      total_taxable: totalTaxable,
       total_gst: totalGst,
-      total_amount: totalAmount + totalGst,
+      total_amount: totalTaxable + totalGst,
     }, { transaction: t });
 
     await t.commit();
