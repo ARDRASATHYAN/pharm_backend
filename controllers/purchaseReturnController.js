@@ -1,6 +1,6 @@
 const db = require('../models');
 const { removeStock } = require('../utils/StockService');
-const { PurchaseReturn, PurchaseReturnItem, PurchaseItems,PurchaseInvoice } = db;
+const { PurchaseReturn, PurchaseReturnItem, PurchaseItems,PurchaseInvoice,Item } = db;
 
 
 exports.createPurchaseReturn = async (req, res) => {
@@ -39,25 +39,43 @@ exports.createPurchaseReturn = async (req, res) => {
       // 3️⃣ Fetch original purchase item
       const purchaseItem = await PurchaseItems.findOne({
         where: { purchase_id, item_id, batch_no },
+        include: [{ model: Item, as: "item", attributes: ["pack_size"] }],
         transaction: t,
       });
+
+
+
 
       if (!purchaseItem) {
         throw new Error(`No purchase item found for item ${item_id}, batch ${batch_no}`);
       }
 
-      const purchase_rate = Number(purchaseItem.purchase_rate);
-      const gst_percent = Number(purchaseItem.gst_percent || 0);
 
-      // 4️⃣ Calculate discount, scheme, GST, total
-      const baseAmount = qty * purchase_rate;
-      const discountAmount = baseAmount * (discount_percent / 100);
-      const schemeAmount = baseAmount * (scheme_discount_percent / 100);
-      const taxableAmount = baseAmount - discountAmount - schemeAmount;
-      const gstAmount = taxableAmount * (gst_percent / 100);
-      const totalItemAmount = taxableAmount + gstAmount;
+      
+ const pack_size = Number(purchaseItem.item?.pack_size) || 1;
 
-      totalAmount += totalItemAmount;
+const packQty = Number(qty);                 // entered qty
+const unitQty = packQty * pack_size;         // stock units
+const purchase_rate = Number(purchaseItem.purchase_rate);
+const packRate = Number(purchaseItem.purchase_rate); // PACK RATE
+const gst_percent = Number(purchaseItem.gst_percent || 0);
+const discountPercent = Number(purchaseItem.discount_percent || 0);
+const schemePercent = Number(purchaseItem.scheme_discount_percent || 0);
+
+
+// ✅ Amount calculation MUST use PACK QTY
+const baseAmount = packQty * packRate;
+
+const discountAmount = baseAmount * (discountPercent / 100);
+const schemeAmount = baseAmount * (schemePercent / 100);
+
+const taxableAmount = baseAmount - discountAmount - schemeAmount;
+const gstAmount = taxableAmount * (gst_percent / 100);
+const totalItemAmount = taxableAmount + gstAmount;
+
+totalAmount += totalItemAmount;
+
+
 
       // 5️⃣ Save return item
       await PurchaseReturnItem.create(
@@ -83,7 +101,7 @@ exports.createPurchaseReturn = async (req, res) => {
           store_id,
           item_id,
           batch_no,
-          qty,
+         qty: unitQty,
         },
         t
       );
@@ -140,24 +158,42 @@ exports.getPurchaseReturnById = async (req, res) => {
 exports.getPurchaseReturn = async (req, res) => {
   try {
     let { page = 1, perPage = 10 } = req.query;
-    page = parseInt(page);
-    perPage = parseInt(perPage);
+
+    page = Math.max(parseInt(page) || 1, 1);
+    perPage = Math.max(parseInt(perPage) || 10, 1);
 
     const offset = (page - 1) * perPage;
 
     const { count, rows } = await PurchaseReturn.findAndCountAll({
+      distinct: true, // 🔥 IMPORTANT
       offset,
       limit: perPage,
-      order: [['return_id', 'ASC']], // Corrected primary key
+      order: [["return_id", "DESC"]],
+
       include: [
         {
           model: PurchaseReturnItem,
-          as: "purchaseReturnItems", // Match the association alias
+          as: "purchaseReturnItems",
+          attributes: [
+            "return_item_id",
+            "item_id",
+            "batch_no",
+            "qty",
+            "rate",
+            "amount",
+          ],
         },
         {
           model: PurchaseInvoice,
-          as: "purchase", // Match the association alias
-        }
+          as: "purchase",
+          attributes: [
+            "purchase_id",
+            "invoice_no",
+            "invoice_date",
+            "total_amount",
+            "net_amount",
+          ],
+        },
       ],
     });
 
@@ -172,8 +208,12 @@ exports.getPurchaseReturn = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching Purchase Returns:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error fetching Purchase Returns:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch purchase returns",
+    });
   }
 };
+
 
